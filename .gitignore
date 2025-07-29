@@ -1,0 +1,9 @@
+/target
+
+*.dump
+*.elf
+.DS_Store
+
+.env
+env.sh
+env.fish
