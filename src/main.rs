@@ -1,6 +1,5 @@
 use std::fs::OpenOptions;
 use std::io::{Read, Write, stdout};
-use std::os::unix::fs::MetadataExt;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, sleep};
 use std::time;
@@ -73,9 +72,8 @@ fn handle_load_cmd(file: String, symbol: String, identifier: String) -> Option<V
     // println!("machine: {}", header.e_machine);
     // println!("entry: 0x{:X}", header.e_entry);
 
-    let metadata = std::fs::metadata(path.clone()).unwrap();
-    let size = metadata.size().to_le_bytes();
-    println!("[PICOSH] program size {} {:?}", metadata.size(), size);
+    let size = file_data.len().to_le_bytes();
+    println!("[PICOSH] program size {} {:?}", file_data.len(), size);
     data.extend(&size[0..8]);
 
     let symbol_table = file.symbol_table().unwrap().unwrap();
@@ -104,7 +102,7 @@ fn handle_load_cmd(file: String, symbol: String, identifier: String) -> Option<V
     );
 
     data.extend(file_data.as_slice());
-    println!("[PICOSH] writing {} bytes do data", metadata.size());
+    println!("[PICOSH] writing {} bytes do data", file_data.len());
     // data.extend(file_data.as_slice());
 
     // buf_writer.flush().expect("failed to flush file");
