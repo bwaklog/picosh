@@ -13,6 +13,8 @@ use serialport::SerialPort;
 
 const LOAD_PROG_MAGIC: &[u8] = "LOADPROG".as_bytes();
 const KILL_PROG_MAGIC: &[u8] = "KILLTASK".as_bytes();
+const LIST_TASKS_MAGIC: &[u8] = "LISTTASK".as_bytes();
+const RELOAD_TASKS_MAGIC: &[u8] = "RELAUNCH".as_bytes();
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -46,6 +48,7 @@ enum Commands {
         identifier: String,
     },
     List,
+    Log,
 }
 
 fn handle_load_cmd(file: String, symbol: String, identifier: String) -> Option<Vec<u8>> {
@@ -121,6 +124,35 @@ fn handle_kill_cmd(identifier: String) -> Option<Vec<u8>> {
     Some(data)
 }
 
+fn handle_relaunch_cmd(identifier: String) -> Option<Vec<u8>> {
+    let mut data: Vec<u8> = Vec::new();
+
+    let ident_bytes = format!("{:8}", identifier)
+        .chars()
+        .take(8)
+        .collect::<String>()
+        .into_bytes();
+
+    println!(
+        "Attempting to kill program {:?} => {}",
+        ident_bytes.clone(),
+        String::from_utf8(ident_bytes.clone()).unwrap()
+    );
+
+    data.extend(RELOAD_TASKS_MAGIC);
+    data.extend(ident_bytes);
+
+    Some(data)
+}
+
+fn handle_list_cmd() -> Option<Vec<u8>> {
+    let mut data: Vec<u8> = Vec::new();
+
+    data.extend(LIST_TASKS_MAGIC);
+
+    Some(data)
+}
+
 fn handle_command(
     cmd: Commands,
     serial: Arc<Mutex<Box<dyn SerialPort + 'static>>>,
@@ -140,14 +172,12 @@ fn handle_command(
             file,
             symbol,
             identifier,
-        } => {
-            result = handle_load_cmd(file, symbol, identifier).unwrap();
-        }
-        Commands::List => {}
-        Commands::Relaunch { identifier } => {
-            _ = identifier;
-        }
-        Commands::Kill { identifier } => result = handle_kill_cmd(identifier).unwrap(),
+        } => result = handle_load_cmd(file, symbol, identifier)?,
+        Commands::List => result = handle_list_cmd()?,
+
+        Commands::Relaunch { identifier } => result = handle_relaunch_cmd(identifier)?,
+        Commands::Kill { identifier } => result = handle_kill_cmd(identifier)?,
+        Commands::Log => {}
     }
 
     println!("{:?}", result);
@@ -188,11 +218,11 @@ fn main() {
                 print!("{}", String::from_utf8_lossy(&read_buf));
                 stdout().flush().unwrap();
             }
-
         }
     });
 
     sleep(time::Duration::from_secs(2));
     handle_command(args.cmd, Arc::clone(&serial));
+
     loop {}
 }
