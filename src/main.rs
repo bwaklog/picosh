@@ -1,4 +1,3 @@
-use std::fs::OpenOptions;
 use std::io::{Read, Write, stdout};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, sleep};
@@ -165,14 +164,6 @@ fn handle_command(
     cmd: Commands,
     serial: Arc<Mutex<Box<dyn SerialPort + 'static>>>,
 ) -> Option<Vec<u8>> {
-    let dump_path = std::path::PathBuf::from("/tmp/elf.dump");
-    let mut dump_file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(dump_path)
-        .expect("failed to create a dump file");
-
     let mut result: Vec<u8> = Vec::new();
 
     match cmd {
@@ -191,14 +182,7 @@ fn handle_command(
         }
     }
 
-    println!(
-        "[PICOSH] writing {} bytes to dump file /tmp/elf.dump and serial device",
-        result.len()
-    );
-
-    dump_file
-        .write_all(&result)
-        .expect("failed to write data to the dumpfile");
+    println!("[PICOSH] writing {} the serial device", result.len());
 
     let mut writer_handle = serial.lock().unwrap();
     for byte in result {
